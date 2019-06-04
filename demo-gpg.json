@@ -1,0 +1,7 @@
+{
+  "name": "gpg",
+  "description": "gpg host for native messagging",
+  "path": "/path/to/main.py",
+  "type": "stdio",
+  "allowed_extensions": [ "gpg@example.com" ]
+} 
