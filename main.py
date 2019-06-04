@@ -1,5 +1,6 @@
+#!/bin/python3 -u
+
 import sys
-import base64
 import json
 import struct
 import gnupg
@@ -29,8 +30,8 @@ def send_message(encoded_message):
 
 MARSHAL_MAP = {
   gnupg.ListKeys: lambda x: list(x),
-  gnupg.Crypt: lambda x: x.status and x.data.decode('ascii'), # base64.encodebytes(x.data).decode('ascii'),
-  gnupg.Sign: lambda x: x.status and x.data.decode('ascii'), # base64.encodebytes(x.data).decode('ascii'),
+  gnupg.Crypt: lambda x: x.status and x.data.decode('ascii'),
+  gnupg.Sign: lambda x: x.status and x.data.decode('ascii'),
   gnupg.Verify: lambda x: x.status and { 'keyid': x.key_id, 'valid': x.valid, 'key_status': x.key_status },
   str: lambda x: x
 }
