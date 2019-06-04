@@ -73,10 +73,10 @@ def is_valid_message(message, action_whitelist):
   if not args_dict:
     return False
   
-  return dict_schema_match(args_dict, { 'args': message['args'], 'kwargs': message['kwargs'] })
+  return dict_schema_match(args_dict, message)
 
 # allowed actions and arguments.
-action_whitelist = {
+ACTION_WHITELIST = {
   'list_keys': {
     'args': [bool],
     'kwargs': {}
@@ -106,7 +106,8 @@ action_whitelist = {
   'export_keys': {
     'args': [str], # second argument is private, which is not allowed to export.
     'kwargs': {
-      'minimal': bool
+      'minimal': bool,
+      'armor': True
     }
   }
 }
@@ -124,7 +125,7 @@ if __name__ == '__main__':
   gpg = gnupg.GPG()
   message = get_message()
   
-  if not is_valid_message(message, action_whitelist):
+  if not is_valid_message(message, ACTION_WHITELIST):
     send_message(encode_message('error', 'forbidden action'))
     sys.exit(-1)
     
