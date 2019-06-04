@@ -28,6 +28,89 @@ def send_message(encoded_message):
   sys.stdout.write(encoded_message[1])
   sys.stdout.flush()
 
+# schema/pattern matching
+def list_schema_match(schema, instance):
+  if len(schema) != len(instance):
+    return False
+  
+  for s, i in zip(schema, instance):
+    if not schema_match(s, i):
+      return False
+  
+  return True
+
+def dict_schema_match(schema, instance):
+  for prop, s in schema.items():
+    i = instance.get(prop)
+    
+    if not schema_match(s, i):
+      return False
+  
+  return True
+
+def schema_match(schema, instance):
+  if schema != instance:
+    # schema is primitive type, so schema must be instance
+    if schema is None or isinstance(schema, (bool, int, float, str)):
+      return False
+    # both are list, recursion
+    elif isinstance(schema, (list, tuple)) and isinstance(instance, (list, tuple)):
+      if not list_schema_match(schema, instance):
+        return False
+    # both are dict, recursion
+    elif isinstance(schema, dict) and isinstance(instance, dict):
+      if not dict_schema_match(schema, instance):
+        return False
+    # instance must be an instance of schema
+    elif not isinstance(instance, schema):
+      return False
+      
+  return True
+
+def is_valid_message(message, action_whitelist):
+  args_dict = action_whitelist.get(message['action'])
+  
+  if not args_dict:
+    return False
+  
+  return dict_schema_match(args_dict, { 'args': message['args'], 'kwargs': message['kwargs'] })
+
+# allowed actions and arguments.
+action_whitelist = {
+  'list_keys': {
+    'args': [bool],
+    'kwargs': {}
+  },
+  'sign': {
+    'args': [str],
+    'kwargs': {
+      'keyid': str,
+      'clearsign': bool,
+      'binary': False
+    }
+  },
+  'verify': {
+    'args': [str],
+    'kwargs': {}
+  },
+  'encrypt': {
+    'args': [str, str],
+    'kwargs': {
+      'armor': True
+    }
+  },
+  'decrypt': {
+    'args': [str],
+    'kwargs': {}
+  },
+  'export_keys': {
+    'args': [str], # second argument is private, which is not allowed to export.
+    'kwargs': {
+      'minimal': bool
+    }
+  }
+}
+
 MARSHAL_MAP = {
   gnupg.ListKeys: lambda x: list(x),
   gnupg.Crypt: lambda x: x.status and x.data.decode('ascii'),
@@ -41,11 +124,7 @@ if __name__ == '__main__':
   gpg = gnupg.GPG()
   message = get_message()
   
-  # whitelist of gpg attributes plz.
-  # TODO: verify_data ???
-  action_whitelist = ('list_keys', 'sign', 'verify', 'encrypt', 'decrypt', 'export_keys')
-  
-  if not message['action'] in action_whitelist:
+  if not is_valid_message(message, action_whitelist):
     send_message(encode_message('error', 'forbidden action'))
     sys.exit(-1)
     
