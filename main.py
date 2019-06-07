@@ -7,19 +7,19 @@ import gnupg
 
 def get_message():
   raw_length = sys.stdin.buffer.read(4)
-  
+
   if not raw_length:
     sys.exit(0)
-    
+
   message_length, = struct.unpack('=I', raw_length)
   message = sys.stdin.buffer.read(message_length)
-  
+
   return json.loads(message)
 
 def encode_message(type_text, message_content):
   encoded_content = json.dumps({ 'type': type_text, 'data': message_content })
   encoded_length = struct.pack('=I', len(encoded_content))
-  
+
   return encoded_length, encoded_content
 
 def send_message(encoded_message):
@@ -32,20 +32,20 @@ def send_message(encoded_message):
 def list_schema_match(schema, instance):
   if len(schema) != len(instance):
     return False
-  
+
   for s, i in zip(schema, instance):
     if not schema_match(s, i):
       return False
-  
+
   return True
 
 def dict_schema_match(schema, instance):
   for prop, s in schema.items():
     i = instance.get(prop)
-    
+
     if not schema_match(s, i):
       return False
-  
+
   return True
 
 def schema_match(schema, instance):
@@ -64,15 +64,15 @@ def schema_match(schema, instance):
     # instance must be an instance of schema
     elif not isinstance(instance, schema):
       return False
-      
+
   return True
 
 def is_valid_message(message, action_whitelist):
   args_dict = action_whitelist.get(message['action'])
-  
+
   if not args_dict:
     return False
-  
+
   return dict_schema_match(args_dict, message)
 
 # allowed actions and arguments.
@@ -112,39 +112,40 @@ ACTION_WHITELIST = {
   }
 }
 
+# TODO: improve marshalling strategy
 MARSHAL_MAP = {
   gnupg.ListKeys: lambda x: list(x),
-  gnupg.Crypt: lambda x: x.status and x.data.decode('ascii'),
+  gnupg.Crypt: lambda x: x.status and { 'data': x.data.decode('ascii'), 'ok': x.ok, 'valid': x.valid, 'sig_info': x.sig_info },
   gnupg.Sign: lambda x: x.status and x.data.decode('ascii'),
   gnupg.Verify: lambda x: x.status and { 'keyid': x.key_id, 'valid': x.valid, 'key_status': x.key_status },
-  str: lambda x: x
+  str: lambda x: x # export_keys
 }
 
 if __name__ == '__main__':
   # use default keyring
   gpg = gnupg.GPG()
   message = get_message()
-  
+
   if not is_valid_message(message, ACTION_WHITELIST):
     send_message(encode_message('error', 'forbidden action'))
     sys.exit(-1)
-    
+
   with open('request.log', 'a') as fh:
     fh.write(json.dumps(message))
     fh.write('\n\n')
-  
+
   try:
     result = getattr(gpg, message['action'])(*message['args'], **message['kwargs'])
     result_type = type(result)
     marshal_fn = MARSHAL_MAP[result_type]
     marshalled_result = marshal_fn(result)
-    
+
     if marshalled_result:
       status = 'success'
     else:
       status = 'error'
       marshalled_result = 'error: ' + message['action']
-      
+
     send_message(encode_message(status, marshalled_result))
   except Exception as e:
     send_message(encode_message('error', e))
