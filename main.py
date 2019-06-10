@@ -5,6 +5,8 @@ import json
 import struct
 import gnupg
 
+from gpge import GPGe
+
 def get_message():
   raw_length = sys.stdin.buffer.read(4)
 
@@ -76,6 +78,7 @@ def is_valid_message(message, action_whitelist):
   return dict_schema_match(args_dict, message)
 
 # allowed actions and arguments.
+# TODO: forbid extra_args in kwargs!!
 ACTION_WHITELIST = {
   'list_keys': {
     'args': [bool],
@@ -85,12 +88,13 @@ ACTION_WHITELIST = {
     'args': [str],
     'kwargs': {
       'keyid': str,
-      'clearsign': bool,
-      'binary': False
+      'clearsign': False,
+      'binary': False,
+      'detach': True
     }
   },
-  'verify': {
-    'args': [str],
+  'verify_data_streams': {
+    'args': [str, str],
     'kwargs': {}
   },
   'encrypt': {
@@ -117,13 +121,13 @@ MARSHAL_MAP = {
   gnupg.ListKeys: lambda x: list(x),
   gnupg.Crypt: lambda x: x.status and { 'data': x.data.decode('ascii'), 'ok': x.ok, 'valid': x.valid, 'sig_info': x.sig_info },
   gnupg.Sign: lambda x: x.status and x.data.decode('ascii'),
-  gnupg.Verify: lambda x: x.status and { 'keyid': x.key_id, 'valid': x.valid, 'key_status': x.key_status },
+  gnupg.Verify: lambda x: x.valid and { 'keyid': x.key_id, 'key_status': x.key_status },
   str: lambda x: x # export_keys
 }
 
 if __name__ == '__main__':
   # use default keyring
-  gpg = gnupg.GPG()
+  gpg = GPGe()
   message = get_message()
 
   if not is_valid_message(message, ACTION_WHITELIST):
