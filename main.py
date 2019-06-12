@@ -45,10 +45,10 @@ def dict_schema_match(schema, instance):
   for prop, s in schema.items():
     i = instance.get(prop)
 
-    if not schema_match(s, i):
+    if i is None or not schema_match(s, i):
       return False
 
-  return True
+  return len(schema.items()) == len(instance.items())
 
 def schema_match(schema, instance):
   if schema != instance:
@@ -75,10 +75,12 @@ def is_valid_message(message, action_whitelist):
   if not args_dict:
     return False
 
-  return dict_schema_match(args_dict, message)
+  message_copy = message.copy()
+  del message_copy['action']
+
+  return dict_schema_match(args_dict, message_copy)
 
 # allowed actions and arguments.
-# TODO: forbid extra_args in kwargs!!
 ACTION_WHITELIST = {
   'list_keys': {
     'args': [bool],
@@ -131,7 +133,7 @@ if __name__ == '__main__':
   message = get_message()
 
   if not is_valid_message(message, ACTION_WHITELIST):
-    send_message(encode_message('error', 'forbidden action'))
+    send_message(encode_message('error', f'forbidden action {message}'))
     sys.exit(-1)
 
   with open('request.log', 'a') as fh:
