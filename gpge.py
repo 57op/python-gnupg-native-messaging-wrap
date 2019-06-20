@@ -5,6 +5,9 @@ class GPGe(GPG):
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
+  def get_version(self):
+    return self.version
+
   def verify_data_streams(self, signature, data, temp_dir=None):
     if not isinstance(signature, bytes):
       # assume ascii signature
@@ -17,5 +20,3 @@ class GPGe(GPG):
       fh.write(signature)
       fh.seek(0)
       return self.verify_data(fh.name, data)
-
-  # todo: get_key (by keyid)
