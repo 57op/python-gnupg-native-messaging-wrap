@@ -82,9 +82,16 @@ def is_valid_message(message, action_whitelist):
 
 # allowed actions and arguments.
 ACTION_WHITELIST = {
+  'get_version': {
+    'args': [],
+    'kwargs': {}
+  },
   'list_keys': {
     'args': [bool],
-    'kwargs': {}
+    'kwargs': {
+      'sigs': bool,
+      'keys': list
+    }
   },
   'sign': {
     'args': [str],
@@ -124,7 +131,8 @@ MARSHAL_MAP = {
   gnupg.Crypt: lambda x: x.status and { 'data': x.data.decode('ascii'), 'ok': x.ok, 'valid': x.valid, 'sig_info': x.sig_info },
   gnupg.Sign: lambda x: x.status and x.data.decode('ascii'),
   gnupg.Verify: lambda x: x.valid and { 'keyid': x.key_id, 'key_status': x.key_status },
-  str: lambda x: x # export_keys
+  str: lambda x: x, # export_keys
+  tuple: lambda x: list(x) # version
 }
 
 if __name__ == '__main__':
@@ -138,7 +146,7 @@ if __name__ == '__main__':
 
   with open('request.log', 'a') as fh:
     fh.write(json.dumps(message))
-    fh.write('\n\n')
+    fh.write('\n')
 
   try:
     result = getattr(gpg, message['action'])(*message['args'], **message['kwargs'])
@@ -153,6 +161,10 @@ if __name__ == '__main__':
       marshalled_result = 'error: ' + message['action']
 
     send_message(encode_message(status, marshalled_result))
+
+    #with open('request.log', 'a') as fh:
+    #  fh.write(json.dumps(marshalled_result))
+    #  fh.write('\n\n')
   except Exception as e:
     send_message(encode_message('error', e))
     sys.exit(-1)
